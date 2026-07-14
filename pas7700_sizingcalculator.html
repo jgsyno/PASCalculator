@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PAS7700 Storage Sizing Calculator</title>
+<style>
+
+  :root {
+    --bg:         #F0F2F5;
+    --surface:    #FFFFFF;
+    --surface2:   #F7F8FA;
+    --border:     #DFE1E6;
+    --border2:    #C8CDD6;
+    --text:       #1A1C1F;
+    --muted:      #5C6472;
+    --dim:        #8F97A3;
+    --accent:     #0067E6;
+    --accent-dim: #E6F5FF;
+    --green:      #0D826F;
+    --green-dim:  #F0FFFA;
+    --amber:      #92400E;
+    --amber-dim:  #FFF8E1;
+    --red:        #C0392B;
+    --red-dim:    #FFF0F0;
+    --mono:       ui-monospace, 'SF Mono', 'Cascadia Mono', 'Segoe UI Mono', monospace;
+    --sans:       -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  /* Header */
+  .header {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .header-logo {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 13px; letter-spacing: -0.5px;
+    flex-shrink: 0;
+  }
+  .header-text h1 { font-size: 18px; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
+  .header-text p  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* Mode toggle */
+  .mode-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    width: fit-content;
+  }
+  .mode-btn {
+    padding: 6px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--sans);
+    cursor: pointer;
+    border-radius: 5px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+  .mode-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  /* Inputs */
+  .input-grid {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+  .grid3 { grid-template-columns: 1fr 1fr 1fr; }
+  .grid4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+  .field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .field input,
+  .field select {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: var(--sans);
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  .field input:focus,
+  .field select:focus { border-color: var(--accent); }
+  .field select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235C6472' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;
+  }
+
+  /* Alerts */
+  .alerts { margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 8px; }
+  .alert {
+    font-size: 12.5px;
+    padding: 10px 14px;
+    border-radius: 7px;
+    line-height: 1.5;
+    border-left: 3px solid transparent;
+  }
+  .alert-ok    { background: var(--green-dim); color: var(--green);  border-color: var(--green); }
+  .alert-warn  { background: var(--amber-dim); color: var(--amber);  border-color: var(--amber); }
+  .alert-error { background: var(--red-dim);   color: var(--red);    border-color: var(--red); }
+  .alert-info  { background: var(--surface2);  color: var(--muted);  border-color: var(--border2); }
+
+  /* Cards */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 1.75rem;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .card-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+  .card-value {
+    font-size: 20px;
+    font-weight: 600;
+    font-family: var(--mono);
+    color: var(--text);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .card-value.good { color: var(--green); }
+  .card-value.bad  { color: var(--red); }
+  .card-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* Section titles */
+  .section-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 1.5rem 0 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Panel wrapper */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--dim);
+    text-align: right;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  th:first-child { text-align: left; }
+  td {
+    font-size: 12.5px;
+    text-align: right;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    color: var(--text);
+  }
+  td:first-child {
+    text-align: left;
+    font-family: var(--sans);
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr.hl td { background: var(--surface2); }
+  tr.row-ok td { background: var(--green-dim); }
+  tr.row-ok td:first-child { color: var(--green); }
+  tr.row-warn td { background: var(--amber-dim); }
+  tr.row-warn td:first-child { color: var(--amber); }
+  tr.row-error td { background: var(--red-dim); }
+  tr.row-error td:first-child { color: var(--red); }
+
+  /* Upgrade table */
+  .upgrade-wrap { margin-top: 1rem; }
+
+  /* Footer note */
+  .note {
+    font-size: 11px;
+    color: var(--dim);
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    line-height: 1.6;
+  }
+
+  /* Drive bay visualization */
+  .viz-scroll { overflow-x: auto; }
+  .viz-chassis {
+    position: relative;
+    border: 1.5px solid #D9975C;
+    border-radius: 12px;
+    padding: 20px 14px 22px;
+    margin-top: 14px;
+    min-width: 660px;
+  }
+  .viz-chassis-label {
+    position: absolute;
+    top: -9px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .viz-row {
+    display: grid;
+    grid-template-columns: repeat(24, minmax(19px, 1fr));
+    gap: 6px;
+  }
+  .viz-row-top    { margin-bottom: 20px; }
+  .viz-seg {
+    position: relative;
+    display: grid;
+    gap: 5px;
+    padding: 6px 5px;
+    border: 1.5px solid transparent;
+    border-radius: 9px;
+  }
+  .viz-seg-label {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    padding: 0 6px;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .viz-row-top    .viz-seg-label { top: -8px; }
+  .viz-row-bottom .viz-seg-label { bottom: -8px; }
+  .viz-bay {
+    height: 62px;
+    border: 1.5px solid var(--border2);
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    color: var(--text);
+    background: var(--surface2);
+  }
+  .viz-seg-empty { border-color: transparent; }
+  .viz-seg-empty .viz-bay {
+    border-style: dashed;
+    background: transparent;
+    color: var(--dim);
+  }
+  .viz-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .viz-legend-item { display: flex; align-items: center; gap: 6px; }
+  .viz-swatch {
+    width: 12px; height: 12px;
+    border-radius: 3px;
+    border: 1.5px solid var(--border2);
+    flex-shrink: 0;
+  }
+  .viz-summary {
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* Toolbar */
+  .toolbar-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+  .toolbar-row .mode-row { margin-bottom: 0; }
+  .toolbar { display: flex; gap: 8px; }
+  .tool-btn {
+    padding: 7px 14px;
+    font-size: 12.5px;
+    font-weight: 500;
+    font-family: var(--sans);
+    cursor: pointer;
+    border-radius: 6px;
+    border: 1px solid var(--border2);
+    background: var(--surface);
+    color: var(--muted);
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .tool-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tool-btn.flash { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+
+  /* Print header (hidden on screen) */
+  .print-header { display: none; }
+
+  @media print {
+    body { background: #fff; padding: 0; font-size: 12px; }
+    .container { max-width: 100%; }
+    .mode-row, .toolbar, #inputs-auto, #inputs-manual, .header-logo { display: none !important; }
+    .print-header {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .header { border: none; padding: 0 0 0.5rem; margin-bottom: 0.5rem; }
+    .viz-scroll { overflow-x: visible; }
+    .viz-chassis { min-width: 0; }
+    .viz-bay { height: 46px; font-size: 8px; }
+    .card, .panel, .alert, .viz-chassis, .viz-summary { break-inside: avoid; }
+    table { font-size: 11px; }
+    a { text-decoration: none; color: inherit; }
+  }
+
+  @media (max-width: 640px) {
+    .grid3, .grid4 { grid-template-columns: 1fr 1fr; }
+    .cards { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="header-logo">SY</div>
+    <div class="header-text">
+      <h1>PAS7700 Storage Sizing Calculator</h1>
+      <p>Head unit only &middot; RAID 6 per dual pool &middot; Btrfs overhead &middot; 80% performance threshold</p>
+    </div>
+  </div>
+
+  <div class="print-header" id="print-header"></div>
+
+  <!-- Mode toggle + toolbar -->
+  <div class="toolbar-row">
+    <div class="mode-row">
+      <button class="mode-btn active" id="btn-auto" onclick="setMode('auto')">Auto size</button>
+      <button class="mode-btn" id="btn-manual" onclick="setMode('manual')">Manual</button>
+    </div>
+    <div class="toolbar">
+      <button type="button" class="tool-btn" id="btn-copy" onclick="copySummary(this)">Copy summary</button>
+      <button type="button" class="tool-btn" id="btn-link" onclick="copyShareLink(this)">Copy share link</button>
+      <button type="button" class="tool-btn" onclick="window.print()">Print / PDF</button>
+    </div>
+  </div>
+
+  <!-- Auto inputs -->
+  <div id="inputs-auto">
+    <div class="input-grid grid3">
+      <div class="field">
+        <label for="logical-auto">Customer logical need (TiB)</label>
+        <input type="number" id="logical-auto" value="200" min="1" step="1">
+      </div>
+      <div class="field">
+        <label for="drive-auto">Drive capacity</label>
+        <select id="drive-auto">
+          <option value="7.68">7.68 TB</option>
+          <option value="3.84">3.84 TB</option>
+          <option value="1.92">1.92 TB</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="dedup-auto">Dedup ratio</label>
+        <select id="dedup-auto">
+          <option value="1">1:1 &mdash; no dedup</option>
+          <option value="2">2:1 &mdash; conservative</option>
+          <option value="3" selected>3:1 &mdash; moderate</option>
+          <option value="4">4:1 &mdash; optimistic</option>
+          <option value="5">5:1 &mdash; published max</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manual inputs -->
+  <div id="inputs-manual" style="display:none">
+    <div class="input-grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 0.75rem;">
+      <div class="field">
+        <label for="logical-manual">Customer logical need (TiB)</label>
+        <input type="number" id="logical-manual" value="200" min="1" step="1">
+      </div>
+      <div class="field">
+        <label for="drive-manual">Drive capacity</label>
+        <select id="drive-manual">
+          <option value="7.68">7.68 TB</option>
+          <option value="3.84">3.84 TB</option>
+          <option value="1.92">1.92 TB</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="dedup-manual">Dedup ratio</label>
+        <select id="dedup-manual">
+          <option value="1">1:1 &mdash; no dedup</option>
+          <option value="2">2:1 &mdash; conservative</option>
+          <option value="3" selected>3:1 &mdash; moderate</option>
+          <option value="4">4:1 &mdash; optimistic</option>
+          <option value="5">5:1 &mdash; published max</option>
+        </select>
+      </div>
+    </div>
+    <div class="input-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 0.75rem;">
+      <div class="field">
+        <label for="total-drives-manual">Total drives</label>
+        <input type="number" id="total-drives-manual" value="48" min="3" max="48" step="1">
+      </div>
+      <div class="field">
+        <label for="num-pools-manual">Number of pools</label>
+        <select id="num-pools-manual">
+          <option value="1">1 pool</option>
+          <option value="2">2 pools</option>
+          <option value="3" selected>3 pools</option>
+          <option value="4">4 pools</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="max-per-pool-manual">Max drives per pool</label>
+        <select id="max-per-pool-manual">
+          <option value="12">12 drives (4x pools)</option>
+          <option value="16" selected>16 drives (3x pools)</option>
+          <option value="24">24 drives (2x pools)</option>
+          <option value="48">48 drives (1x pool)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="raid-manual">RAID level</label>
+        <select id="raid-manual">
+          <option value="1">RAID 5 &mdash; 1 parity drive (min 3)</option>
+          <option value="2" selected>RAID 6 &mdash; 2 parity drives (min 4)</option>
+          <option value="3">RAID TP &mdash; 3 parity drives (min 5)</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap: 12px; margin-bottom: 0.75rem;">
+      <div class="mode-row" style="margin-bottom:0">
+        <button class="mode-btn active" id="btn-perf" onclick="setPerfMode('performance')">Performance</button>
+        <button class="mode-btn" id="btn-cost" onclick="setPerfMode('cost')">Cost savings</button>
+      </div>
+      <p style="font-size:11px; color:var(--muted); margin:0;" id="perf-mode-desc">Fills all pools to max drives per pool.</p>
+    </div>
+    <div style="display:flex; gap:12px; align-items:stretch; margin-bottom: 0.5rem;">
+      <div id="pool-distribution" style="flex:1; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border2); border-radius: 6px; font-size: 12px; color: var(--muted); min-height: 32px; line-height: 1.5;"></div>
+      <div style="min-width:160px; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px; font-size: 12px;">
+        <div style="color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:3px;">Drives required</div>
+        <div id="drives-required" style="font-family:var(--mono); font-size:16px; font-weight:600; color:var(--accent);">—</div>
+      </div>
+    </div>
+    <p id="drive-count-resolve" style="font-size:11px; color: var(--muted); margin-bottom: 1rem; min-height: 16px;"></p>
+  </div>
+
+  <div class="alerts" id="alert-box"></div>
+  <div class="cards" id="cards"></div>
+
+  <div id="viz-panel" style="display:none">
+    <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>Drive bay layout &mdash; 48 NVMe bays</span>
+      <span class="mode-row" style="margin:0;padding:3px;">
+        <button type="button" class="mode-btn active" id="viz-btn-pool" style="padding:4px 12px;font-size:11px;" onclick="setVizView('pool')">Pool view</button>
+        <button type="button" class="mode-btn" id="viz-btn-ctrl" style="padding:4px 12px;font-size:11px;" onclick="setVizView('ctrl')">Controller view</button>
+      </span>
+    </div>
+    <div class="viz-legend" id="viz-legend"></div>
+    <div class="viz-scroll">
+      <div class="viz-chassis">
+        <div class="viz-chassis-label">PAS7700</div>
+        <div id="viz-rows"></div>
+      </div>
+    </div>
+    <div class="viz-summary" id="viz-summary"></div>
+  </div>
+
+  <div class="section-title">Capacity chain</div>
+  <table>
+    <thead>
+      <tr><th>Step</th><th>Total system</th><th>Per controller (/ 2)</th></tr>
+    </thead>
+    <tbody id="chain"></tbody>
+  </table>
+
+  <div class="section-title">Drive configuration</div>
+  <table>
+    <thead>
+      <tr><th>Parameter</th><th>Value</th></tr>
+    </thead>
+    <tbody id="drives-table"></tbody>
+  </table>
+
+  <div id="upgrade-box"></div>
+
+  <p class="note" id="footnote"></p>
+
+</div>
+
+<script>
+const BINARY_DIV = 1.0995;
+const BTRFS      = 0.05;
+const PERF       = 0.80;
+const PARITY_PER_POOL = 2;
+const DRIVE_SIZES = [1.92, 3.84, 7.68];
+
+const STD_CONFIGS = [
+  { pools: 3, drivesPerPool: 16, label: '3x dual pools (16 drives each)', notRecommended: false },
+  { pools: 2, drivesPerPool: 24, label: '2x dual pools (24 drives each)', notRecommended: false },
+  { pools: 1, drivesPerPool: 48, label: '1x dual pool (48 drives)',       notRecommended: true  }
+];
+
+const MANUAL_CONFIGS = {
+  '1:16': { pools: 1, drivesPerPool: 16, label: '1x dual pool (16 drives)',          notRecommended: false },
+  '2:16': { pools: 2, drivesPerPool: 16, label: '2x dual pools (16 drives each)',     notRecommended: false },
+  '3:16': { pools: 3, drivesPerPool: 16, label: '3x dual pools (16 drives each)',     notRecommended: false },
+  '1:24': { pools: 1, drivesPerPool: 24, label: '1x dual pool (24 drives)',           notRecommended: false },
+  '2:24': { pools: 2, drivesPerPool: 24, label: '2x dual pools (24 drives each)',     notRecommended: false },
+  '1:48': { pools: 1, drivesPerPool: 48, label: '1x dual pool (48 drives)',           notRecommended: true  }
+};
+
+let currentMode = 'auto';
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('inputs-auto').style.display   = mode === 'auto'   ? '' : 'none';
+  document.getElementById('inputs-manual').style.display = mode === 'manual' ? '' : 'none';
+  document.getElementById('btn-auto').classList.toggle('active',   mode === 'auto');
+  document.getElementById('btn-manual').classList.toggle('active', mode === 'manual');
+  calc();
+}
+
+function computeCap(pools, drivesPerPool, driveTB) {
+  const MAX_PER_ARRAY = 24;
+  // Split each pool into arrays of max 24 drives, 2 parity per array
+  const fullArrays   = Math.floor(drivesPerPool / MAX_PER_ARRAY);
+  const remainder    = drivesPerPool % MAX_PER_ARRAY;
+  const arraysPerPool = fullArrays + (remainder >= 4 ? 1 : 0); // min 4 drives for RAID 6
+  const parityPerPool = arraysPerPool * PARITY_PER_POOL;
+  const dataPerPool   = drivesPerPool - parityPerPool;
+
+  const totalDrives    = pools * drivesPerPool;
+  const parityDrives   = pools * parityPerPool;
+  const dataDrives     = pools * dataPerPool;
+  const rawTB          = totalDrives * driveTB;
+  const afterParityTB  = dataDrives  * driveTB;
+  const afterParityTiB = afterParityTB / BINARY_DIV;
+  const afterBtrfsTiB  = afterParityTiB * (1 - BTRFS);
+  const at80           = afterBtrfsTiB * PERF;
+  const at100          = afterBtrfsTiB;
+  return { totalDrives, parityDrives, dataDrives, rawTB, afterParityTB, afterParityTiB, afterBtrfsTiB, at80, at100, arraysPerPool };
+}
+
+function f(v, unit) { return v.toFixed(2) + '&nbsp;' + unit; }
+function ft(v, unit) { return v.toFixed(2) + ' ' + unit; }
+
+function findConfig(logical, driveTB, dedup) {
+  // Step 1: try 3x pool layout, incrementing one pool (16 drives) at a time
+  // Valid options: 1x16, 2x16, 3x16
+  for (let pools = 1; pools <= 3; pools++) {
+    const cfg = { pools: pools, drivesPerPool: 16, label: pools + 'x dual pool' + (pools > 1 ? 's' : '') + ' (16 drives each)', notRecommended: false };
+    const c = computeCap(pools, 16, driveTB);
+    if (c.at80 * dedup >= logical) return { cfg: cfg, cannotMeet: false };
+  }
+  // Step 2: fall back to 2x24
+  const cfg2x24 = STD_CONFIGS[1];
+  const c2x24 = computeCap(2, 24, driveTB);
+  if (c2x24.at80 * dedup >= logical) return { cfg: cfg2x24, cannotMeet: false };
+  // Step 3: fall back to 1x48 (not recommended)
+  const cfg1x48 = STD_CONFIGS[2];
+  const c1x48 = computeCap(1, 48, driveTB);
+  if (c1x48.at80 * dedup >= logical) return { cfg: cfg1x48, cannotMeet: false };
+  // Cannot meet
+  return { cfg: cfg1x48, cannotMeet: true };
+}
+
+// ---- Drive bay visualization ----
+const POOL_COLORS = [
+  { border: '#D9975C', fill: '#F4E3CF', label: '#B36B24', stripe: '#E3C49E' },  // orange
+  { border: '#8AAED9', fill: '#DEE9F6', label: '#3D6EA8', stripe: '#BCCFE8' },  // blue
+  { border: '#6FBFA8', fill: '#DFF2EB', label: '#1E7A62', stripe: '#B7DFD2' },  // green
+  { border: '#B79BD9', fill: '#ECE3F6', label: '#6B46A8', stripe: '#D4C3E8' }   // violet
+];
+const TOTAL_BAYS = 48;
+const BAYS_PER_ROW = 24;
+
+function poolArrayInfo(poolDrives, parityPerArray) {
+  const MAX_PER_ARRAY = 24;
+  const minArrayDrives = parityPerArray + 2;
+  const fullArrays = Math.floor(poolDrives / MAX_PER_ARRAY);
+  const remainder  = poolDrives % MAX_PER_ARRAY;
+  const arrays = fullArrays + (remainder >= minArrayDrives ? 1 : 0);
+  return { arrays: arrays, parity: arrays * parityPerArray };
+}
+
+let lastViz = null;
+let vizView = 'pool';
+const CTRL_A = { border: '#E8833A', fill: '#F9D9BC' };
+const CTRL_B = { border: '#6D9EE0', fill: '#D6E4F7' };
+
+function setVizView(view) {
+  vizView = view;
+  document.getElementById('viz-btn-pool').classList.toggle('active', view === 'pool');
+  document.getElementById('viz-btn-ctrl').classList.toggle('active', view === 'ctrl');
+  if (lastViz) renderViz(lastViz.pools, lastViz.parity);
+}
+
+function renderViz(poolSizes, parityPerArray) {
+  lastViz = { pools: poolSizes.slice(), parity: parityPerArray };
+  const panel = document.getElementById('viz-panel');
+  if (!poolSizes || poolSizes.length === 0) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+
+  // Assign pools to bays sequentially (bay 1-24 top row, 25-48 bottom row)
+  const bays = new Array(TOTAL_BAYS).fill(null);
+  const parityBays = new Array(TOTAL_BAYS).fill(false);
+  let b = 0;
+  poolSizes.forEach(function(size, pi) {
+    const poolStart = b;
+    for (let i = 0; i < size && b < TOTAL_BAYS; i++, b++) bays[b] = pi;
+    // Mark representative parity bays: the last parityPerArray drives of each array in this pool
+    const MAX_PER_ARRAY = 24;
+    const minArrayDrives = parityPerArray + 2;
+    let offset = 0, remaining = size;
+    while (remaining > 0) {
+      const arrDrives = Math.min(remaining, MAX_PER_ARRAY);
+      if (arrDrives >= minArrayDrives) {
+        for (let pd = 0; pd < parityPerArray; pd++) {
+          const idx = poolStart + offset + arrDrives - 1 - pd;
+          if (idx < TOTAL_BAYS) parityBays[idx] = true;
+        }
+      }
+      offset += arrDrives;
+      remaining -= arrDrives;
+    }
+  });
+
+  // Build the two rows as contiguous segments (a pool wrapping rows gets a labeled segment in each row)
+  let rowsHtml = '';
+  for (let row = 0; row < 2; row++) {
+    const segs = [];
+    for (let col = 0; col < BAYS_PER_ROW; col++) {
+      const bayIdx = row * BAYS_PER_ROW + col;
+      const v = bays[bayIdx];
+      if (segs.length && segs[segs.length - 1].pool === v) segs[segs.length - 1].count++;
+      else segs.push({ pool: v, count: 1, startBay: bayIdx + 1 });
+    }
+    rowsHtml += '<div class="viz-row ' + (row === 0 ? 'viz-row-top' : 'viz-row-bottom') + '">' +
+      segs.map(function(seg) {
+        let baysHtml = '';
+        for (let i = 0; i < seg.count; i++) {
+          const num = seg.startBay + i;
+          let style = '';
+          if (seg.pool !== null) {
+            if (vizView === 'ctrl') {
+              style = ' style="border-color:' + CTRL_A.border + ';background:linear-gradient(to bottom,' + CTRL_A.fill + ' 0%,' + CTRL_A.fill + ' 50%,' + CTRL_B.fill + ' 50%,' + CTRL_B.fill + ' 100%);" title="Dual-active: managed by both controllers"';
+            } else {
+              const pc = POOL_COLORS[seg.pool];
+              const isParity = parityBays[num - 1];
+              const bg = isParity
+                ? 'repeating-linear-gradient(45deg,' + pc.fill + ',' + pc.fill + ' 4px,' + pc.stripe + ' 4px,' + pc.stripe + ' 8px)'
+                : pc.fill;
+              style = ' style="border-color:' + pc.border + ';background:' + bg + ';"' +
+                      (isParity ? ' title="Parity capacity (distributed in practice)"' : '');
+            }
+          }
+          baysHtml += '<div class="viz-bay"' + style + '>' + num + '</div>';
+        }
+        const segStyle = 'grid-column: span ' + seg.count + '; grid-template-columns: repeat(' + seg.count + ', 1fr);' +
+          (seg.pool === null ? '' : ' border-color:' + POOL_COLORS[seg.pool].border + ';');
+        const label = seg.pool === null ? '' :
+          '<span class="viz-seg-label" style="color:' + POOL_COLORS[seg.pool].label + ';">Dual Pool ' + (seg.pool + 1) + '</span>';
+        return '<div class="viz-seg' + (seg.pool === null ? ' viz-seg-empty' : '') + '" style="' + segStyle + '">' + label + baysHtml + '</div>';
+      }).join('') + '</div>';
+  }
+  document.getElementById('viz-rows').innerHTML = rowsHtml;
+
+  // Legend
+  let legendHtml = '';
+  if (vizView === 'ctrl') {
+    legendHtml +=
+      '<div class="viz-legend-item"><span class="viz-swatch" style="border-color:' + CTRL_A.border + ';background:' + CTRL_A.fill + ';"></span>Managed by Controller A</div>' +
+      '<div class="viz-legend-item"><span class="viz-swatch" style="border-color:' + CTRL_B.border + ';background:' + CTRL_B.fill + ';"></span>Managed by Controller B</div>';
+  }
+  legendHtml += poolSizes.map(function(size, pi) {
+    const info = poolArrayInfo(size, parityPerArray);
+    return '<div class="viz-legend-item"><span class="viz-swatch" style="border-color:' + POOL_COLORS[pi].border + ';background:' + POOL_COLORS[pi].fill + ';"></span>Dual Pool ' + (pi + 1) + ' &mdash; ' + size + ' drives &middot; ' + info.arrays + ' array' + (info.arrays !== 1 ? 's' : '') + ' &middot; ' + info.parity + ' parity</div>';
+  }).join('');
+  const used = poolSizes.reduce(function(a, c) { return a + c; }, 0);
+  const empty = TOTAL_BAYS - used;
+  if (vizView === 'pool') legendHtml += '<div class="viz-legend-item"><span class="viz-swatch" style="border-color:#C8CDD6;background:repeating-linear-gradient(45deg,#F7F8FA,#F7F8FA 3px,#D5DAE2 3px,#D5DAE2 6px)"></span>Parity (' + parityPerArray + ' per array)</div>';
+  if (empty > 0) legendHtml += '<div class="viz-legend-item"><span class="viz-swatch" style="border-style:dashed;"></span>Empty bay</div>';
+  document.getElementById('viz-legend').innerHTML = legendHtml;
+
+  // Summary
+  document.getElementById('viz-summary').innerHTML =
+    '<strong style="color:var(--text)">' + used + ' of ' + TOTAL_BAYS + '</strong> bays populated' +
+    (empty > 0 ? ' &middot; <strong style="color:var(--green)">' + empty + '</strong> empty bay' + (empty !== 1 ? 's' : '') + ' available for expansion' : ' &middot; fully populated') +
+    '<br><span style="font-size:11px;color:var(--dim)">' + (vizView === 'ctrl'
+      ? 'Dual-active architecture: every drive is managed by both controllers simultaneously &mdash; either controller can serve I/O for any bay.'
+      : 'Striped bays represent parity capacity per array &mdash; in practice RAID parity is distributed across all drives in the array. Pools fill bays sequentially by bay number.') + '</span>';
+}
+
+function render(logical, driveTB, dedup, cfg, isAuto, cannotMeet) {
+  const c          = computeCap(cfg.pools, cfg.drivesPerPool, driveTB);
+  const eff80      = c.at80  * dedup;
+  const eff100     = c.at100 * dedup;
+  const headroom   = eff80 - logical;
+  const headroomPct = (headroom / eff80 * 100);
+  const meets      = eff80 >= logical;
+  const effCls     = meets ? 'row-ok' : 'row-error';
+
+  // Alerts
+  let alerts = '';
+  if (cfg.notRecommended && !cannotMeet)
+    alerts += '<div class="alert alert-warn">Not recommended: a single dual pool with 48 drives in RAID 6 reduces redundancy and resiliency. Consider 2x or 3x dual pools.</div>';
+  if (cannotMeet)
+    alerts += '<div class="alert alert-error">The head unit cannot meet this requirement with ' + driveTB + ' TB drives at ' + dedup + ':1 dedup across any standard configuration. Consider upgrading to a larger drive capacity.</div>';
+  else if (isAuto)
+    alerts += '<div class="alert alert-info">Auto selected: <strong>' + cfg.label + '</strong> is the first standard config that meets the requirement. Switch to Manual to override.</div>' +
+              '<div class="alert alert-ok">Meets requirement &mdash; ' + ft(headroom, 'TiB') + ' (' + headroomPct.toFixed(1) + '%) above customer logical need at 80% threshold.</div>';
+  else if (meets)
+    alerts += '<div class="alert alert-ok">Meets requirement &mdash; ' + ft(headroom, 'TiB') + ' (' + headroomPct.toFixed(1) + '%) above customer logical need at 80% threshold.</div>';
+  else
+    alerts += '<div class="alert alert-warn">This configuration does not meet the customer\'s requirement of ' + ft(logical, 'TiB') + '. Consider a larger drive capacity.</div>';
+  document.getElementById('alert-box').innerHTML = alerts;
+
+  // Cards
+  const headClass = cannotMeet ? 'bad' : meets ? 'good' : 'bad';
+  document.getElementById('cards').innerHTML =
+    '<div class="card"><div class="card-label">Pool config</div><div class="card-value">' + cfg.pools + 'x dual pool' + (cfg.pools > 1 ? 's' : '') + '</div><div class="card-sub">' + cfg.drivesPerPool + ' drives per pool &middot; ' + c.totalDrives + ' total</div></div>' +
+    '<div class="card"><div class="card-label">Effective @ 80%</div><div class="card-value ' + (meets ? 'good' : 'bad') + '">' + ft(eff80, 'TiB') + '</div><div class="card-sub">' + ft(eff80/2, 'TiB') + ' per controller</div></div>' +
+    '<div class="card"><div class="card-label">Effective @ 100%</div><div class="card-value">' + ft(eff100, 'TiB') + '</div><div class="card-sub">' + ft(eff100/2, 'TiB') + ' per controller</div></div>' +
+    '<div class="card"><div class="card-label">Headroom @ 80%</div><div class="card-value ' + headClass + '">' + ft(headroom, 'TiB') + '</div><div class="card-sub">' + headroomPct.toFixed(1) + '% vs. requirement</div></div>';
+
+  // Chain
+  document.getElementById('chain').innerHTML =
+    '<tr><td>Raw storage (' + c.totalDrives + ' drives &times; ' + driveTB + ' TB)</td><td>' + f(c.rawTB, 'TB') + '</td><td>' + f(c.rawTB/2, 'TB') + '</td></tr>' +
+    '<tr><td>After RAID 6 parity (' + c.parityDrives + ' parity drives, ' + c.arraysPerPool + ' array' + (c.arraysPerPool > 1 ? 's' : '') + ' per pool)</td><td>' + f(c.afterParityTB, 'TB') + '</td><td>' + f(c.afterParityTB/2, 'TB') + '</td></tr>' +
+    '<tr><td>Binary conversion (TB &divide; 1.0995)</td><td>' + f(c.afterParityTiB, 'TiB') + '</td><td>' + f(c.afterParityTiB/2, 'TiB') + '</td></tr>' +
+    '<tr><td>After 5% Btrfs overhead</td><td>' + f(c.afterBtrfsTiB, 'TiB') + '</td><td>' + f(c.afterBtrfsTiB/2, 'TiB') + '</td></tr>' +
+    '<tr class="hl"><td>Usable @ 80% perf. threshold</td><td>' + f(c.at80, 'TiB') + '</td><td>' + f(c.at80/2, 'TiB') + '</td></tr>' +
+    '<tr class="' + effCls + '"><td>Effective @ 80% (' + dedup + ':1 dedup)</td><td>' + f(eff80, 'TiB') + '</td><td>' + f(eff80/2, 'TiB') + '</td></tr>' +
+    '<tr><td>Effective @ 100% (' + dedup + ':1 dedup)</td><td>' + f(eff100, 'TiB') + '</td><td>' + f(eff100/2, 'TiB') + '</td></tr>';
+
+  // Drive config
+  document.getElementById('drives-table').innerHTML =
+    '<tr><td>Pool configuration</td><td>' + cfg.label + '</td></tr>' +
+    '<tr><td>Drive capacity</td><td>' + driveTB + ' TB</td></tr>' +
+    '<tr><td>Total drives</td><td>' + c.totalDrives + '</td></tr>' +
+    '<tr><td>Parity drives</td><td>' + c.parityDrives + ' (' + PARITY_PER_POOL + ' per array, ' + c.arraysPerPool + ' array' + (c.arraysPerPool > 1 ? 's' : '') + ' per pool)</td></tr>' +
+    '<tr><td>Data drives</td><td>' + c.dataDrives + '</td></tr>' +
+    '<tr><td>Dedup ratio applied</td><td>' + dedup + ':1</td></tr>' +
+    '<tr><td>Customer logical requirement</td><td>' + ft(logical, 'TiB') + '</td></tr>' +
+    '<tr><td>Headroom @ 80%</td><td>' + ft(headroom, 'TiB') + ' (' + headroomPct.toFixed(1) + '%)</td></tr>';
+
+  // Upgrade suggestions
+  let upgradeHtml = '';
+  if (cannotMeet) {
+    upgradeHtml = '<div class="section-title">Upgrade options</div><table><thead><tr><th>Drive size</th><th>Best config</th><th>Effective @ 80%</th><th>Headroom</th></tr></thead><tbody>';
+    DRIVE_SIZES.forEach(function(ds) {
+      if (ds <= driveTB) return;
+      const result = findConfig(logical, ds, dedup);
+      if (!result.cannotMeet) {
+        const cap = computeCap(result.cfg.pools, result.cfg.drivesPerPool, ds);
+        const e80 = cap.at80 * dedup;
+        const hr  = e80 - logical;
+        upgradeHtml += '<tr><td>' + ds + ' TB</td><td>' + result.cfg.label + '</td><td>' + ft(e80, 'TiB') + '</td><td>+' + ft(hr, 'TiB') + '</td></tr>';
+      } else {
+        upgradeHtml += '<tr><td>' + ds + ' TB</td><td colspan="3" style="color:var(--dim)">Cannot meet requirement at any standard config</td></tr>';
+      }
+    });
+    upgradeHtml += '</tbody></table>';
+  }
+  document.getElementById('upgrade-box').innerHTML = upgradeHtml;
+
+  document.getElementById('footnote').textContent = 'RAID 6 per dual pool (2 parity drives per pool). Binary conversion: TB / 1.0995. Btrfs overhead: 5%. 80% DSM performance threshold applied to usable capacity. Effective capacity figures are theoretical — actual deduplication results are highly workload dependent.';
+
+  renderViz(new Array(cfg.pools).fill(cfg.drivesPerPool), PARITY_PER_POOL);
+}
+
+let perfMode = 'performance';
+
+function setPerfMode(mode) {
+  perfMode = mode;
+  document.getElementById('btn-perf').classList.toggle('active', mode === 'performance');
+  document.getElementById('btn-cost').classList.toggle('active', mode === 'cost');
+  document.getElementById('perf-mode-desc').textContent = mode === 'performance'
+    ? 'Fills all pools to max drives per pool.'
+    : 'Fills full pools first, then sizes the last pool to the minimum needed to meet the requirement.';
+  calc();
+}
+
+function distributedrives(totalDrives, numPools, maxPerPool, parityPerPool, logical, driveTB, dedup, mode) {
+  var minPerPool = parityPerPool + 2; // minimum 2 data drives + parity
+  var pools = [];
+  var remaining = totalDrives;
+  var valid = true;
+  var errorMsg = '';
+
+  if (mode === 'cost') {
+    // Fill all but last pool to max, then size last pool to minimum needed
+    for (var i = 0; i < numPools - 1; i++) {
+      if (remaining <= 0) {
+        valid = false;
+        errorMsg = 'Not enough drives to fill ' + numPools + ' pools. Pool ' + (i+1) + ' would have 0 drives.';
+        break;
+      }
+      var poolDrives = Math.min(remaining, maxPerPool);
+      if (poolDrives < minPerPool) {
+        valid = false;
+        errorMsg = 'Pool ' + (i+1) + ' would have only ' + poolDrives + ' drives — minimum is ' + minPerPool + ' for this RAID level.';
+        pools.push(poolDrives);
+        break;
+      }
+      pools.push(poolDrives);
+      remaining -= poolDrives;
+    }
+
+    if (valid && remaining > 0) {
+      // Size last pool to minimum needed to meet logical requirement
+      // Try from minPerPool upward until requirement is met or we hit remaining/maxPerPool
+      var cap = computeCapFromPools(pools, driveTB, parityPerPool);
+      var alreadyEff = cap.at80 * dedup;
+      var stillNeeded = logical - alreadyEff;
+
+      var lastPoolSize = minPerPool;
+      if (stillNeeded <= 0) {
+        // Already met by full pools — use minimum valid pool
+        lastPoolSize = minPerPool;
+      } else {
+        // Find minimum drives in last pool that meets the gap
+        for (var d = minPerPool; d <= Math.min(remaining, maxPerPool); d++) {
+          var testPools = pools.concat([d]);
+          var testCap = computeCapFromPools(testPools, driveTB, parityPerPool);
+          if (testCap.at80 * dedup >= logical) {
+            lastPoolSize = d;
+            break;
+          }
+          lastPoolSize = d; // take the max available if never meets
+        }
+      }
+      lastPoolSize = Math.max(minPerPool, Math.min(lastPoolSize, remaining, maxPerPool));
+      if (lastPoolSize < minPerPool) {
+        valid = false;
+        errorMsg = 'Last pool would have only ' + lastPoolSize + ' drives — minimum is ' + minPerPool + ' for this RAID level.';
+      } else {
+        pools.push(lastPoolSize);
+      }
+    } else if (valid && remaining === 0 && pools.length < numPools) {
+      valid = false;
+      errorMsg = 'Not enough drives to populate all ' + numPools + ' pools.';
+    }
+
+  } else {
+    // Performance mode — fill all pools to max
+    for (var i = 0; i < numPools; i++) {
+      if (remaining <= 0) {
+        valid = false;
+        errorMsg = 'Not enough drives to fill ' + numPools + ' pool' + (numPools > 1 ? 's' : '') + '. Pool ' + (i+1) + ' would have 0 drives.';
+        break;
+      }
+      var poolDrives = Math.min(remaining, maxPerPool);
+      if (poolDrives < minPerPool) {
+        valid = false;
+        errorMsg = 'Pool ' + (i+1) + ' would have only ' + poolDrives + ' drives — minimum is ' + minPerPool + ' for this RAID level.';
+        pools.push(poolDrives);
+        break;
+      }
+      pools.push(poolDrives);
+      remaining -= poolDrives;
+    }
+    if (valid && remaining > 0) {
+      valid = false;
+      errorMsg = remaining + ' drives cannot be assigned — all pools are full. Increase pool count or max per pool.';
+    }
+  }
+
+  return { pools: pools, valid: valid, errorMsg: errorMsg };
+}
+
+function computeCapFromPools(poolSizes, driveTB, parityPerArray) {
+  var MAX_PER_ARRAY = 24;
+  var minArrayDrives = parityPerArray + 2;
+  var totalDrives = 0, totalData = 0, totalParity = 0, totalArrays = 0;
+  for (var i = 0; i < poolSizes.length; i++) {
+    var poolDrives = poolSizes[i];
+    var fullArrays = Math.floor(poolDrives / MAX_PER_ARRAY);
+    var remainder  = poolDrives % MAX_PER_ARRAY;
+    var arraysThisPool = fullArrays + (remainder >= minArrayDrives ? 1 : 0);
+    var parityThisPool = arraysThisPool * parityPerArray;
+    totalDrives += poolDrives;
+    totalParity += parityThisPool;
+    totalData   += poolDrives - parityThisPool;
+    totalArrays += arraysThisPool;
+  }
+  var rawTB          = totalDrives * driveTB;
+  var afterParityTB  = totalData   * driveTB;
+  var afterParityTiB = afterParityTB / BINARY_DIV;
+  var afterBtrfsTiB  = afterParityTiB * (1 - BTRFS);
+  var at80           = afterBtrfsTiB * PERF;
+  var at100          = afterBtrfsTiB;
+  return { totalDrives: totalDrives, totalData: totalData, totalParity: totalParity, totalArrays: totalArrays, rawTB: rawTB, afterParityTB: afterParityTB, afterParityTiB: afterParityTiB, afterBtrfsTiB: afterBtrfsTiB, at80: at80, at100: at100 };
+}
+
+function calc() {
+  if (currentMode === 'auto') {
+    const logical  = parseFloat(document.getElementById('logical-auto').value) || 0;
+    const driveTB  = parseFloat(document.getElementById('drive-auto').value);
+    const dedup    = parseInt(document.getElementById('dedup-auto').value);
+    const result   = findConfig(logical, driveTB, dedup);
+    render(logical, driveTB, dedup, result.cfg, true, result.cannotMeet);
+  } else {
+    const logical     = parseFloat(document.getElementById('logical-manual').value) || 0;
+    const driveTB     = parseFloat(document.getElementById('drive-manual').value);
+    const dedup       = parseInt(document.getElementById('dedup-manual').value);
+    const totalDrives = parseInt(document.getElementById('total-drives-manual').value) || 0;
+    const numPools    = parseInt(document.getElementById('num-pools-manual').value);
+    const maxPerPool  = parseInt(document.getElementById('max-per-pool-manual').value);
+    const parityPerPool = parseInt(document.getElementById('raid-manual').value);
+    const resolveEl   = document.getElementById('drive-count-resolve');
+    const distEl      = document.getElementById('pool-distribution');
+
+    const raidLabel = parityPerPool === 1 ? 'RAID 5' : parityPerPool === 2 ? 'RAID 6' : 'RAID TP';
+    const dist = distributedrives(totalDrives, numPools, maxPerPool, parityPerPool, logical, driveTB, dedup, perfMode);
+
+    // Show pool distribution
+    var drivesUsed = dist.pools.reduce(function(a, b) { return a + b; }, 0);
+    if (dist.pools.length > 0) {
+      distEl.innerHTML = dist.pools.map(function(d, i) {
+        return 'Pool ' + (i+1) + ': <strong style="color:var(--text)">' + d + '</strong> drives';
+      }).join(' &nbsp;|&nbsp; ');
+      var reqEl = document.getElementById('drives-required');
+      reqEl.textContent = drivesUsed + ' drives';
+      reqEl.style.color = drivesUsed < totalDrives ? 'var(--green)' : 'var(--accent)';
+    }
+
+    if (!dist.valid) {
+      resolveEl.innerHTML = '<span style="color:var(--amber)">' + dist.errorMsg + '</span>';
+      document.getElementById('alert-box').innerHTML = '<div class="alert alert-warn">' + dist.errorMsg + '</div>';
+      document.getElementById('cards').innerHTML = '';
+      document.getElementById('chain').innerHTML = '';
+      document.getElementById('drives-table').innerHTML = '';
+      document.getElementById('upgrade-box').innerHTML = '';
+      document.getElementById('viz-panel').style.display = 'none';
+      return;
+    }
+
+    resolveEl.innerHTML = '';
+
+    // Build capacity from pool distribution
+    const c = computeCapFromPools(dist.pools, driveTB, parityPerPool);
+    const eff80  = c.at80  * dedup;
+    const eff100 = c.at100 * dedup;
+    const headroom    = eff80 - logical;
+    const headroomPct = (headroom / eff80 * 100);
+    const meets   = eff80 >= logical;
+    const effCls  = meets ? 'row-ok' : 'row-error';
+    const poolLabel = numPools + 'x dual pool' + (numPools > 1 ? 's' : '') + ' (' + dist.pools.join('+') + ' drives)';
+
+    // Alerts
+    let alerts = '';
+    if (meets) alerts += '<div class="alert alert-ok">Meets requirement &mdash; ' + ft(headroom, 'TiB') + ' (' + headroomPct.toFixed(1) + '%) above customer logical need at 80% threshold.</div>';
+    else        alerts += '<div class="alert alert-warn">Does not meet the customer\'s requirement of ' + ft(logical, 'TiB') + '. Consider more drives or a larger drive capacity.</div>';
+    document.getElementById('alert-box').innerHTML = alerts;
+
+    // Cards
+    document.getElementById('cards').innerHTML =
+      '<div class="card"><div class="card-label">Pool config</div><div class="card-value">' + numPools + 'x dual pool' + (numPools > 1 ? 's' : '') + '</div><div class="card-sub">' + dist.pools.join('+') + ' drives &middot; ' + drivesUsed + ' total</div></div>' +
+      '<div class="card"><div class="card-label">Effective @ 80%</div><div class="card-value ' + (meets ? 'good' : 'bad') + '">' + ft(eff80, 'TiB') + '</div><div class="card-sub">' + ft(eff80/2, 'TiB') + ' per controller</div></div>' +
+      '<div class="card"><div class="card-label">Effective @ 100%</div><div class="card-value">' + ft(eff100, 'TiB') + '</div><div class="card-sub">' + ft(eff100/2, 'TiB') + ' per controller</div></div>' +
+      '<div class="card"><div class="card-label">Headroom @ 80%</div><div class="card-value ' + (meets ? 'good' : 'bad') + '">' + ft(headroom, 'TiB') + '</div><div class="card-sub">' + headroomPct.toFixed(1) + '% vs. requirement</div></div>';
+
+    // Chain
+    document.getElementById('chain').innerHTML =
+      '<tr><td>Raw storage (' + c.totalDrives + ' drives &times; ' + driveTB + ' TB)</td><td>' + f(c.rawTB, 'TB') + '</td><td>' + f(c.rawTB/2, 'TB') + '</td></tr>' +
+      '<tr><td>After ' + raidLabel + ' parity (' + c.totalParity + ' parity drives)</td><td>' + f(c.afterParityTB, 'TB') + '</td><td>' + f(c.afterParityTB/2, 'TB') + '</td></tr>' +
+      '<tr><td>Binary conversion (TB &divide; 1.0995)</td><td>' + f(c.afterParityTiB, 'TiB') + '</td><td>' + f(c.afterParityTiB/2, 'TiB') + '</td></tr>' +
+      '<tr><td>After 5% Btrfs overhead</td><td>' + f(c.afterBtrfsTiB, 'TiB') + '</td><td>' + f(c.afterBtrfsTiB/2, 'TiB') + '</td></tr>' +
+      '<tr class="hl"><td>Usable @ 80% perf. threshold</td><td>' + f(c.at80, 'TiB') + '</td><td>' + f(c.at80/2, 'TiB') + '</td></tr>' +
+      '<tr class="' + effCls + '"><td>Effective @ 80% (' + dedup + ':1 dedup)</td><td>' + f(eff80, 'TiB') + '</td><td>' + f(eff80/2, 'TiB') + '</td></tr>' +
+      '<tr><td>Effective @ 100% (' + dedup + ':1 dedup)</td><td>' + f(eff100, 'TiB') + '</td><td>' + f(eff100/2, 'TiB') + '</td></tr>';
+
+    // Drive config
+    document.getElementById('drives-table').innerHTML =
+      '<tr><td>Pool configuration</td><td>' + poolLabel + '</td></tr>' +
+      '<tr><td>RAID level</td><td>' + raidLabel + ' (' + parityPerPool + ' parity per array)</td></tr>' +
+      '<tr><td>Sizing mode</td><td>' + (perfMode === 'performance' ? 'Performance' : 'Cost savings') + '</td></tr>' +
+      '<tr><td>Drive capacity</td><td>' + driveTB + ' TB</td></tr>' +
+      '<tr><td>Total drives</td><td>' + drivesUsed + (drivesUsed < totalDrives ? ' (saved ' + (totalDrives - drivesUsed) + ' vs. input)' : '') + '</td></tr>' +
+      '<tr><td>Total RAID arrays</td><td>' + c.totalArrays + ' (' + parityPerPool + ' parity drives each)</td></tr>' +
+      '<tr><td>Parity drives</td><td>' + c.totalParity + ' total (' + parityPerPool + ' per array)</td></tr>' +
+      '<tr><td>Data drives</td><td>' + c.totalData + '</td></tr>' +
+      '<tr><td>Dedup ratio applied</td><td>' + dedup + ':1</td></tr>' +
+      '<tr><td>Customer logical requirement</td><td>' + ft(logical, 'TiB') + '</td></tr>' +
+      '<tr><td>Headroom @ 80%</td><td>' + ft(headroom, 'TiB') + ' (' + headroomPct.toFixed(1) + '%)</td></tr>';
+
+    document.getElementById('upgrade-box').innerHTML = '';
+    document.getElementById('footnote').textContent = raidLabel + ' per array (' + parityPerPool + ' parity drive' + (parityPerPool > 1 ? 's' : '') + ' per array). Binary conversion: TB / 1.0995. Btrfs overhead: 5%. 80% DSM performance threshold applied to usable capacity. Effective capacity figures are theoretical — actual deduplication results are highly workload dependent.';
+
+    renderViz(dist.pools, parityPerPool);
+  }
+}
+
+// ---- Share / print toolbar ----
+const PARAM_IDS = ['logical-auto','drive-auto','dedup-auto','logical-manual','drive-manual','dedup-manual','total-drives-manual','num-pools-manual','max-per-pool-manual','raid-manual'];
+
+function stripTags(html) {
+  const d = document.createElement('div');
+  d.innerHTML = html;
+  return (d.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
+function tableToText(tbodyId, sep) {
+  const rows = document.querySelectorAll('#' + tbodyId + ' tr');
+  return Array.from(rows).map(function(tr) {
+    return Array.from(tr.querySelectorAll('td')).map(function(td) { return stripTags(td.innerHTML); }).join(sep);
+  }).join('\n');
+}
+
+function buildSummaryText() {
+  const now = new Date();
+  const lines = [];
+  lines.push('PAS7700 STORAGE SIZING SUMMARY');
+  lines.push('Generated: ' + now.toLocaleDateString() + ' ' + now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + '  |  Mode: ' + (currentMode === 'auto' ? 'Auto size' : 'Manual (' + (perfMode === 'performance' ? 'Performance' : 'Cost savings') + ')'));
+  lines.push('');
+  const alertText = stripTags(document.getElementById('alert-box').innerHTML);
+  if (alertText) { lines.push(alertText); lines.push(''); }
+  lines.push('DRIVE CONFIGURATION');
+  lines.push(tableToText('drives-table', ': '));
+  lines.push('');
+  lines.push('CAPACITY CHAIN (total | per controller)');
+  lines.push(tableToText('chain', ' | '));
+  if (lastViz && lastViz.pools.length) {
+    lines.push('');
+    lines.push('BAY LAYOUT (48 NVMe bays, sequential fill)');
+    let bay = 1;
+    lastViz.pools.forEach(function(size, i) {
+      const info = poolArrayInfo(size, lastViz.parity);
+      lines.push('Dual Pool ' + (i + 1) + ': bays ' + bay + '-' + (bay + size - 1) + ' (' + size + ' drives, ' + info.arrays + ' array' + (info.arrays !== 1 ? 's' : '') + ', ' + info.parity + ' parity)');
+      bay += size;
+    });
+    if (bay <= TOTAL_BAYS) lines.push('Empty: bays ' + bay + '-' + TOTAL_BAYS + ' (' + (TOTAL_BAYS - bay + 1) + ' available for expansion)');
+  }
+  lines.push('');
+  lines.push('Notes: ' + document.getElementById('footnote').textContent);
+  lines.push('Config link: ' + buildShareURL());
+  return lines.join('\n');
+}
+
+function buildShareURL() {
+  const params = new URLSearchParams();
+  params.set('mode', currentMode);
+  if (currentMode === 'manual') params.set('sizing', perfMode);
+  PARAM_IDS.forEach(function(id) { params.set(id, document.getElementById(id).value); });
+  return location.origin !== 'null' && location.protocol !== 'file:'
+    ? location.origin + location.pathname + '?' + params.toString()
+    : location.href.split('?')[0] + '?' + params.toString();
+}
+
+function applyURLParams() {
+  const params = new URLSearchParams(location.search);
+  if (!params.toString()) return;
+  PARAM_IDS.forEach(function(id) {
+    if (params.has(id)) {
+      const el = document.getElementById(id);
+      if (el) el.value = params.get(id);
+    }
+  });
+  if (params.get('mode') === 'manual') setMode('manual');
+  if (params.get('sizing') === 'cost') setPerfMode('cost');
+}
+
+function copyToClipboard(text, btn, doneLabel) {
+  const original = btn.textContent;
+  function flash() {
+    btn.textContent = doneLabel;
+    btn.classList.add('flash');
+    setTimeout(function() { btn.textContent = original; btn.classList.remove('flash'); }, 1600);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(flash, function() { fallbackCopy(text); flash(); });
+  } else {
+    fallbackCopy(text); flash();
+  }
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+}
+
+function copySummary(btn)   { copyToClipboard(buildSummaryText(), btn, 'Copied \u2713'); }
+function copyShareLink(btn) { copyToClipboard(buildShareURL(),   btn, 'Link copied \u2713'); }
+
+function updatePrintHeader() {
+  const now = new Date();
+  document.getElementById('print-header').textContent =
+    'Generated ' + now.toLocaleDateString() + ' \u00b7 Mode: ' + (currentMode === 'auto' ? 'Auto size' : 'Manual (' + (perfMode === 'performance' ? 'Performance' : 'Cost savings') + ')') + ' \u00b7 Synology SE field tool';
+}
+window.addEventListener('beforeprint', updatePrintHeader);
+
+['logical-auto','drive-auto','dedup-auto','logical-manual','drive-manual','total-drives-manual','num-pools-manual','max-per-pool-manual','raid-manual','dedup-manual'].forEach(function(id) {
+  document.getElementById(id).addEventListener('change', calc);
+  document.getElementById(id).addEventListener('input',  calc);
+});
+
+applyURLParams();
+calc();
+</script>
+</body>
+</html>
